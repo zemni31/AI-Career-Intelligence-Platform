@@ -1,0 +1,37 @@
+# Variables d'environnement (mots de passe, clés API)
+.env
+config/.env
+
+# Données
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Power BI (fichiers temporaires)
+*.pbix.bak
+~$*.pbix
+
+# OS / Éditeur
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
+
+# Rapports volumineux (optionnel, à ajuster selon ton besoin)
+reports/*.pdf
