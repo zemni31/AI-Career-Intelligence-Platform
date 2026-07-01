@@ -1,11 +1,10 @@
 """
 src/etl/load_kaggle_ai_jobs.py
 
-Première version de l'ETL : insère les colonnes simples du fichier
-ai_jobs_market_2025_2026.csv dans la table `jobs`.
-
-La gestion des compétences (table job_skills) sera ajoutée dans une
-étape suivante, une fois cette insertion de base validée.
+ETL amélioré (Méthode 2) :
+  1. Normalisation des noms de pays
+  2. Chargement de la map countries depuis la base
+  3. Insertion de toutes les offres dans jobs
 """
 
 import sys
@@ -13,18 +12,15 @@ from pathlib import Path
 
 import pandas as pd
 
-# Permet d'importer src/db/connection.py peu importe d'où ce script est lancé
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from db.connection import get_connection
-
+from utils.country_normalizer import COUNTRY_NORMALIZATION
 DATA_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "raw" / "ai_jobs_market_2025_2026.csv"
 
 
+
+
 def load_country_map(cur) -> dict:
-    """
-    Charge la correspondance nom de pays -> id depuis la table countries,
-    pour pouvoir associer chaque offre à son country_id.
-    """
     cur.execute("SELECT id, name FROM countries;")
     rows = cur.fetchall()
     return {name: id_ for id_, name in rows}
@@ -41,14 +37,16 @@ def main():
     country_map = load_country_map(cur)
 
     inserted = 0
-    skipped = 0
+    skipped  = 0
 
     for _, row in df.iterrows():
-        country_id = country_map.get(row["country"])
+        # Normalisation du nom de pays
+        raw_country = row["country"]
+        country_name = COUNTRY_NORMALIZATION.get(raw_country, raw_country)
+        country_id = country_map.get(country_name) if country_name else None
 
-        if country_id is None:
-            # Pays non présent dans notre table de référence -> on ignore
-            # cette ligne pour l'instant et on le signale.
+        # Si le pays est inconnu (ni normalisé, ni dans la base) → on skip
+        if country_name is not None and country_id is None:
             skipped += 1
             continue
 
@@ -93,13 +91,14 @@ def main():
                 row["posting_year"], row["posting_month"],
             ),
         )
-        inserted += 1
+        if cur.rowcount == 1:
+            inserted += 1
 
     conn.commit()
     cur.close()
     conn.close()
 
-    print(f"Terminé. {inserted} lignes insérées, {skipped} lignes ignorées (pays non reconnu).")
+    print(f"Terminé. {inserted} lignes insérées, {skipped} lignes ignorées (pays inconnu).")
 
 
 if __name__ == "__main__":
