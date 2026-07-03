@@ -17,6 +17,7 @@ import sys
 import time
 from pathlib import Path
 from datetime import datetime
+import re
 
 import requests
 
@@ -115,17 +116,17 @@ SKILLS_TO_DETECT = [
 def extract_skills_from_description(description: str) -> list:
     """
     Détecte les compétences connues dans le texte de la description.
-    Retourne une liste de noms de compétences trouvées.
+    Utilise des mots entiers pour éviter les faux positifs.
     """
     if not description:
         return []
     found = []
-    desc_lower = description.lower()
     for skill in SKILLS_TO_DETECT:
-        if skill.lower() in desc_lower:
+        # Cherche le mot entier, insensible à la casse
+        pattern = r'\b' + re.escape(skill) + r'\b'
+        if re.search(pattern, description, re.IGNORECASE):
             found.append(skill)
     return found
-
 
 # ── Main ─────────────────────────────────────────────────────
 def main():
