@@ -63,3 +63,24 @@
 ## 🎯 Objectif suivant
 
 Construire la première version interactive de la plateforme Power BI en utilisant les données stockées dans PostgreSQL.
+
+### 5. Power BI — Dashboards (06/07/2026)
+**Fichier 1 : Market_Intelligence.pbix**
+- Top 10 compétences les plus demandées
+- Salaire moyen par métier + slicer pays
+- Répartition des offres par pays
+- Répartition Remote / Non-Remote
+
+**Fichier 2 : Tendances.pbix**
+- Évolution mensuelle des offres (2025 vs 2026)
+- Compétences en progression (2025 vs 2026)
+
+**Fichier 3 : Entreprises.pbix**
+- Top 15 entreprises qui recrutent
+- Répartition par taille d'entreprise
+
+## 🚧 Prochaine étape
+- Améliorer le design des dashboards
+- Rédiger le README.md GitHub
+- Automatisation ETL (Task Scheduler)
+- Préparer la présentation du projet
