@@ -199,9 +199,10 @@ with st.sidebar:
     st.title("AI Career Advisor")
     st.markdown("---")
     page = st.radio("Navigation", [
-        "🏠 Accueil", "📝 Mon Profil",
-        "📊 Résultats", "🗺️ Plan de carrière"
-    ])
+    "🏠 Accueil", "📝 Mon Profil",
+    "📊 Résultats", "🗺️ Plan de carrière",
+    "📊 Tableau de bord — Marché Data & IA"
+     ])
     st.markdown("---")
     st.markdown("**Base de données**")
     st.metric("Offres analysées", f"{len(jobs_df):,}")
@@ -454,42 +455,40 @@ elif page == "📊 Résultats":
             st.success("🎉 Vous avez toutes les compétences requises !")
 
     st.markdown("---")
-    st.markdown('<div class="section-title">📊 Compétences matchées vs manquantes — Top 5 métiers</div>',
+    st.markdown('<div class="section-title">📊 Récapitulatif — Top 5 métiers compatibles</div>',
                 unsafe_allow_html=True)
 
-    top5_jobs = [j for j, _ in top_10[:5]]
-    chart_data = []
-    for job in top5_jobs:
+    recap_data = []
+    for job, score in top_10[:5]:
         req     = job_skills_map.get(job, set())
-        matched = len(req & user_set)
-        missing = len(req - user_set)
-        chart_data.append({
+        matched = sorted(req & user_set)
+        missing = sorted(req - user_set)
+        sal     = job_salaries.get(job, 0)
+        badge   = "🟢 Excellent" if score >= 50 else "🟡 Bon" if score >= 25 else "🔴 Moyen"
+
+        recap_data.append({
             "Métier": job,
-            "✅ Compétences acquises": matched,
-            "❌ Compétences manquantes": missing
+            "Score": f"{score}%",
+            "Niveau": badge,
+            "✅ Compétences acquises": ", ".join(matched) if matched else "—",
+            "❌ Compétences manquantes": ", ".join(missing) if missing else "✅ Profil complet",
+            "💰 Salaire moyen": f"${sal:,.0f}" if sal and sal > 0 else "N/A"
         })
 
-    chart_df = pd.DataFrame(chart_data)
-    fig_comp = px.bar(
-        chart_df.melt(id_vars="Métier",
-                      value_vars=["✅ Compétences acquises", "❌ Compétences manquantes"],
-                      var_name="Type", value_name="Nombre"),
-        x="Métier", y="Nombre", color="Type",
-        color_discrete_map={
-            "✅ Compétences acquises": "#27AE60",
-            "❌ Compétences manquantes": "#E74C3C"
-        },
-        barmode="group",
-        labels={"Nombre": "Nombre de compétences", "Métier": ""}
+    recap_df = pd.DataFrame(recap_data)
+    st.dataframe(
+        recap_df,
+        use_container_width=True,
+        height=230,
+        hide_index=True,
+        column_config={
+            "Score": st.column_config.TextColumn(width="small"),
+            "Niveau": st.column_config.TextColumn(width="small"),
+            "💰 Salaire moyen": st.column_config.TextColumn(width="medium"),
+            "✅ Compétences acquises": st.column_config.TextColumn(width="large"),
+            "❌ Compétences manquantes": st.column_config.TextColumn(width="large"),
+        }
     )
-    fig_comp.update_layout(
-        height=350,
-        margin=dict(l=0, r=0, t=10, b=0),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        legend=dict(orientation="h", yanchor="bottom", y=-0.4)
-    )
-    st.plotly_chart(fig_comp, use_container_width=True)
 
     st.markdown("---")
     st.markdown('<div class="section-title">📄 Télécharger mon rapport PDF</div>',
@@ -677,3 +676,373 @@ elif page == "🗺️ Plan de carrière":
                            coloraxis_showscale=False)
         fig3.update_traces(texttemplate="$%{y:,.0f}", textposition="outside")
         st.plotly_chart(fig3, use_container_width=True)
+
+# ════════════════════════════════════════════════════════════
+# PAGE 5 — TABLEAU DE BORD MARCHÉ DATA & IA
+# ════════════════════════════════════════════════════════════
+elif page == "📊 Tableau de bord — Marché Data & IA":
+    st.markdown("# 📊 Tableau de bord — Marché Data & IA")
+    st.markdown("Vue complète du marché de l'emploi Data & IA — "
+                "compétences, salaires, entreprises et tendances")
+    st.markdown("---")
+
+    # ── Chargement données ────────────────────────────────────
+    @st.cache_data
+    def load_market_data():
+        conn = get_connection()
+
+        top_skills = pd.read_sql("""
+            SELECT s.name, COUNT(*) as nb_offres
+            FROM job_skills js
+            JOIN skills s ON js.skill_id = s.id
+            GROUP BY s.name
+            ORDER BY nb_offres DESC
+            LIMIT 10;
+        """, conn)
+
+        salary_job = pd.read_sql("""
+            SELECT job_title,
+                   AVG(salary_avg) as salaire_moyen,
+                   COUNT(*) as nb_offres
+            FROM jobs
+            WHERE source = 'kaggle_ai_jobs'
+              AND salary_avg IS NOT NULL
+            GROUP BY job_title
+            ORDER BY salaire_moyen DESC
+            LIMIT 15;
+        """, conn)
+
+        offres_pays = pd.read_sql("""
+            SELECT c.name as pays, COUNT(*) as nb_offres
+            FROM jobs j
+            JOIN countries c ON j.country_id = c.id
+            GROUP BY c.name
+            ORDER BY nb_offres DESC;
+        """, conn)
+
+        remote = pd.read_sql("""
+            SELECT is_remote_friendly, COUNT(*) as nb
+            FROM jobs
+            WHERE source = 'kaggle_ai_jobs'
+              AND is_remote_friendly IS NOT NULL
+            GROUP BY is_remote_friendly;
+        """, conn)
+
+        evolution = pd.read_sql("""
+            SELECT posting_year, posting_month, COUNT(*) as nb_offres
+            FROM jobs
+            WHERE source = 'kaggle_ai_jobs'
+              AND posting_year IS NOT NULL
+              AND posting_month IS NOT NULL
+            GROUP BY posting_year, posting_month
+            ORDER BY posting_year, posting_month;
+        """, conn)
+
+        skills_progression = pd.read_sql("""
+            SELECT s.name as skill_name,
+                   j.posting_year,
+                   COUNT(*) as nb_offres
+            FROM job_skills js
+            JOIN skills s ON js.skill_id = s.id
+            JOIN jobs j ON js.job_id = j.id
+            WHERE j.source = 'kaggle_ai_jobs'
+              AND j.posting_year IS NOT NULL
+            GROUP BY s.name, j.posting_year
+            ORDER BY nb_offres DESC;
+        """, conn)
+
+        top_companies = pd.read_sql("""
+            SELECT c.name, COUNT(*) as nb_offres
+            FROM jobs j
+            JOIN companies c ON j.company_id = c.id
+            GROUP BY c.name
+            ORDER BY nb_offres DESC
+            LIMIT 15;
+        """, conn)
+
+        company_size = pd.read_sql("""
+            SELECT company_size, COUNT(*) as nb_offres
+            FROM jobs
+            WHERE company_size IS NOT NULL
+            GROUP BY company_size
+            ORDER BY nb_offres DESC;
+        """, conn)
+
+        conn.close()
+        return (top_skills, salary_job, offres_pays, remote,
+                evolution, skills_progression, top_companies, company_size)
+
+    (top_skills, salary_job, offres_pays, remote,
+     evolution, skills_progression, top_companies, company_size) = load_market_data()
+
+    # ── KPI globaux ───────────────────────────────────────────
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("📋 Total offres", f"{len(jobs_df) + 3477:,}")
+    k2.metric("🛠️ Compétences", f"{len(skills_df):,}")
+    k3.metric("🏢 Entreprises", f"{top_companies['name'].nunique():,}+")
+    k4.metric("🌍 Pays couverts", f"{len(countries_df):,}")
+
+    st.markdown("---")
+
+    # ════════════════════════
+    # SECTION 1 — COMPÉTENCES
+    # ════════════════════════
+    st.markdown("## 🛠️ Compétences")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown('<div class="section-title">Top 10 compétences les plus demandées</div>',
+                    unsafe_allow_html=True)
+        fig1 = px.bar(
+            top_skills.sort_values("nb_offres"),
+            x="nb_offres", y="name", orientation="h",
+            color="nb_offres", color_continuous_scale="Blues",
+            labels={"nb_offres": "Nombre d'offres", "name": "Compétence"},
+            text="nb_offres"
+        )
+        fig1.update_traces(textposition="outside")
+        fig1.update_layout(
+            height=400, margin=dict(l=0, r=60, t=10, b=0),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            coloraxis_showscale=False
+        )
+        st.plotly_chart(fig1, use_container_width=True)
+
+    with col2:
+        st.markdown('<div class="section-title">Progression des compétences (2025 vs 2026)</div>',
+                    unsafe_allow_html=True)
+
+        # Top 10 compétences globales
+        top10_names = top_skills["name"].tolist()
+        skills_prog_filtered = skills_progression[
+            skills_progression["skill_name"].isin(top10_names)
+        ]
+        fig2 = px.bar(
+            skills_prog_filtered,
+            x="skill_name", y="nb_offres",
+            color="posting_year",
+            barmode="group",
+            labels={"nb_offres": "Nombre d'offres",
+                    "skill_name": "Compétence",
+                    "posting_year": "Année"},
+            color_discrete_map={2025: "#AED6F1", 2026: "#1A5276"}
+        )
+        fig2.update_layout(
+            height=400, margin=dict(l=0, r=0, t=10, b=0),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            xaxis_tickangle=-30,
+            legend=dict(
+                orientation="h", yanchor="bottom", y=-0.4,
+                title="Année"
+            )
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+
+    st.markdown("---")
+
+    # ════════════════════════
+    # SECTION 2 — SALAIRES
+    # ════════════════════════
+    st.markdown("## 💰 Salaires")
+
+    # Slicer pays
+    pays_options = ["Tous les pays"] + offres_pays["pays"].dropna().tolist()
+    selected_pays = st.selectbox("🌍 Filtrer par pays :", pays_options, key="pays_filter")
+
+    @st.cache_data
+    def load_salary_by_country(pays):
+        conn = get_connection()
+        where = "" if pays == "Tous les pays" else f"AND c.name = '{pays}'"
+        df = pd.read_sql(f"""
+            SELECT j.job_title,
+                   AVG(j.salary_avg) as salaire_moyen
+            FROM jobs j
+            LEFT JOIN countries c ON j.country_id = c.id
+            WHERE j.source = 'kaggle_ai_jobs'
+              AND j.salary_avg IS NOT NULL
+              {where}
+            GROUP BY j.job_title
+            ORDER BY salaire_moyen DESC
+            LIMIT 15;
+        """, conn)
+        conn.close()
+        return df
+
+    salary_filtered = load_salary_by_country(selected_pays)
+    salary_filtered["salaire_moyen"] = salary_filtered["salaire_moyen"].round(0)
+
+    fig3 = px.bar(
+        salary_filtered.sort_values("salaire_moyen"),
+        x="salaire_moyen", y="job_title", orientation="h",
+        color="salaire_moyen", color_continuous_scale="RdYlGn",
+        labels={"salaire_moyen": "Salaire moyen (USD)", "job_title": "Métier"},
+        text_auto=True
+    )
+    fig3.update_traces(texttemplate="$%{x:,.0f}", textposition="outside")
+    fig3.update_layout(
+        height=450, margin=dict(l=0, r=100, t=10, b=0),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        coloraxis_showscale=False
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+
+    st.markdown("---")
+
+    # ════════════════════════
+    # SECTION 3 — GÉOGRAPHIE
+    # ════════════════════════
+    st.markdown("## 🌍 Géographie")
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.markdown('<div class="section-title">Nombre d\'offres par pays</div>',
+                    unsafe_allow_html=True)
+        fig4 = px.bar(
+            offres_pays.sort_values("nb_offres"),
+            x="nb_offres", y="pays",
+            orientation="h",
+            color="nb_offres",
+            color_continuous_scale="Teal",
+            labels={"nb_offres": "Nombre d'offres", "pays": "Pays"},
+            text="nb_offres",
+            title=""
+        )
+        fig4.update_traces(textposition="outside")
+        fig4.update_layout(
+            height=450,
+            margin=dict(l=0, r=60, t=10, b=0),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            coloraxis_showscale=False
+        )
+        st.plotly_chart(fig4, use_container_width=True)
+
+    with col4:
+        st.markdown('<div class="section-title">Répartition Remote / Non-Remote</div>',
+                    unsafe_allow_html=True)
+        remote["label"] = remote["is_remote_friendly"].map(
+            {True: "Remote Friendly", False: "Non Remote"})
+        fig5 = px.pie(
+            remote, names="label", values="nb",
+            color="label",
+            color_discrete_map={
+                "Remote Friendly": "#27AE60",
+                "Non Remote":      "#E74C3C"
+            },
+            hole=0.3
+        )
+        fig5.update_traces(textposition="outside", textinfo="label+percent")
+        fig5.update_layout(
+            height=400, margin=dict(l=0, r=0, t=10, b=0),
+            paper_bgcolor="rgba(0,0,0,0)",
+            showlegend=False
+        )
+        st.plotly_chart(fig5, use_container_width=True)
+
+    st.markdown("---")
+
+    # ════════════════════════
+    # SECTION 4 — TENDANCES
+    # ════════════════════════
+    st.markdown("## 📅 Tendances")
+    col5, col6 = st.columns(2)
+
+    with col5:
+        st.markdown('<div class="section-title">Évolution mensuelle des offres (2025-2026)</div>',
+                    unsafe_allow_html=True)
+
+        evolution["mois_continu"] = (
+            (evolution["posting_year"] - 2025) * 12 + evolution["posting_month"]
+        )
+        evolution["période"] = evolution.apply(
+            lambda r: f"{'Jan Feb Mar Apr Mai Jun Jul Aoû Sep Oct Nov Déc'.split()[int(r.posting_month)-1]} {int(r.posting_year)}",
+            axis=1
+        )
+
+        fig6 = go.Figure()
+
+        for year, color, name in [(2025, "#AED6F1", "2025"), (2026, "#1A5276", "2026")]:
+            df_year = evolution[evolution["posting_year"] == year].sort_values("mois_continu")
+            fig6.add_trace(go.Scatter(
+                x=df_year["mois_continu"],
+                y=df_year["nb_offres"],
+                mode="lines+markers",
+                name=name,
+                line=dict(color=color, width=2),
+                marker=dict(size=8),
+                hovertext=df_year["période"],
+                hovertemplate="%{hovertext}<br>Offres: %{y}<extra></extra>"
+            ))
+
+        fig6.update_layout(
+            height=350,
+            margin=dict(l=0, r=0, t=10, b=0),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(
+                tickmode="array",
+                tickvals=list(range(1, 25)),
+                ticktext=[
+                    "Jan 25","Fév 25","Mar 25","Avr 25","Mai 25","Jun 25",
+                    "Jul 25","Aoû 25","Sep 25","Oct 25","Nov 25","Déc 25",
+                    "Jan 26","Fév 26","Mar 26","Avr 26","Mai 26","Jun 26",
+                    "Jul 26","Aoû 26","Sep 26","Oct 26","Nov 26","Déc 26"
+                ],
+                tickangle=-45
+            ),
+            yaxis_title="Nombre d'offres",
+            legend=dict(orientation="h", yanchor="bottom", y=-0.5)
+        )
+        st.plotly_chart(fig6, use_container_width=True)
+
+    with col6:
+        st.markdown('<div class="section-title">Répartition par taille d\'entreprise</div>',
+                    unsafe_allow_html=True)
+        size_labels = {
+            "S": "Startup (1-50)",
+            "M": "Mid-size (51-500)",
+            "L": "Large (500+)"
+        }
+        company_size["label"] = company_size["company_size"].map(size_labels).fillna(
+            company_size["company_size"])
+        fig7 = px.pie(
+            company_size, names="label", values="nb_offres",
+            color_discrete_sequence=px.colors.qualitative.Pastel,
+            hole=0.3
+        )
+        fig7.update_traces(textposition="outside", textinfo="label+percent")
+        fig7.update_layout(
+            height=350, margin=dict(l=0, r=0, t=10, b=0),
+            paper_bgcolor="rgba(0,0,0,0)",
+            showlegend=False
+        )
+        st.plotly_chart(fig7, use_container_width=True)
+
+    st.markdown("---")
+
+    # ════════════════════════
+    # SECTION 5 — ENTREPRISES
+    # ════════════════════════
+    st.markdown("## 🏢 Entreprises")
+    st.markdown('<div class="section-title">Top 15 entreprises avec le plus d\'offres Data & IA</div>',
+                unsafe_allow_html=True)
+
+    fig8 = px.bar(
+        top_companies.sort_values("nb_offres"),
+        x="nb_offres", y="name",
+        orientation="h",
+        color_discrete_sequence=["#1A5276"],
+        labels={"nb_offres": "Nombre d'offres", "name": "Entreprise"},
+        text="nb_offres"
+    )
+    fig8.update_traces(textposition="outside", marker_color="#2E86C1")
+    fig8.update_layout(
+        height=500,
+        margin=dict(l=0, r=40, t=10, b=0),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+    st.plotly_chart(fig8, use_container_width=True)
