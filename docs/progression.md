@@ -84,3 +84,30 @@ Construire la première version interactive de la plateforme Power BI en utilisa
 - Rédiger le README.md GitHub
 - Automatisation ETL (Task Scheduler)
 - Préparer la présentation du projet
+
+### 6. Application web Streamlit — Career Advisor (07/07/2026)
+- Application multi-pages : Accueil, Mon Profil, Résultats, Plan de carrière, Tableau de bord
+- Score de compatibilité métier (Dice coefficient)
+- Jauge de compatibilité + badges (Excellent / Bon / Moyen)
+- Export rapport PDF (fpdf2)
+- Graphiques interactifs Plotly (salaires, compétences, géographie, tendances, entreprises)
+- Intégration complète des visuels Power BI dans Streamlit
+
+---
+
+## 📊 État actuel (08/07/2026)
+
+| Table | Lignes |
+|---|---|
+| jobs | ~5856 |
+| companies | ~1400 |
+| skills | 108 |
+| job_skills | 10132 |
+
+---
+
+## 🚧 Prochaines étapes
+- [ ] AI Agent Chatbot
+- [ ] Prédiction de salaire (ML)
+- [ ] README.md GitHub
+- [ ] Présentation finale
