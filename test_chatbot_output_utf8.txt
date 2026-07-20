@@ -1,0 +1,45 @@
+﻿=== QUESTION ===
+Quelle est la diffÚrence entre un Data Scientist, un Machine Learning Engineer et un Data Engineer ?
+--- REPONSE ---
+============================================================
+QUESTION : Quelle est la diffÚrence entre un Data Scientist, un Machine Learning Engineer et un Data Engineer ?
+INTENTION : 
+============================================================
+ERROR: 'charmap' codec can't encode character '\u202f' in position 107: character maps to <undefined>
+
+=== QUESTION ===
+Quel mÚtier recommandes-tu Ó un Útudiant qui aime les mathÚmatiques mais pas le dÚveloppement web ?
+--- REPONSE ---
+============================================================
+QUESTION : Quel mÚtier recommandes-tu Ó un Útudiant qui aime les mathÚmatiques mais pas le dÚveloppement web ?
+INTENTION : 
+============================================================
+ERROR: 'charmap' codec can't encode character '\u202f' in position 192: character maps to <undefined>
+
+=== QUESTION ===
+Est-ce que SQL est indispensable pour devenir Data Scientist ?
+--- REPONSE ---
+============================================================
+QUESTION : Est-ce que SQL est indispensable pour devenir Data Scientist ?
+INTENTION : 
+============================================================
+ERROR: 'charmap' codec can't encode character '\u202f' in position 6: character maps to <undefined>
+
+=== QUESTION ===
+Quels sont les modÞles d'IA les plus performants actuellement ?
+--- REPONSE ---
+============================================================
+QUESTION : Quels sont les modÞles d'IA les plus performants actuellement ?
+INTENTION : 
+============================================================
+ERROR: 'charmap' codec can't encode character '\u202f' in position 65: character maps to <undefined>
+
+=== QUESTION ===
+Quelles sont les principales nouveautÚs en IA gÚnÚrative en 2026 ?
+--- REPONSE ---
+============================================================
+QUESTION : Quelles sont les principales nouveautÚs en IA gÚnÚrative en 2026 ?
+INTENTION : 
+============================================================
+ERROR: 'charmap' codec can't encode character '\u202f' in position 69: character maps to <undefined>
+
