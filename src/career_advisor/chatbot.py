@@ -11,7 +11,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
-from groq import Groq
+
+try:
+    from groq import Groq
+except Exception:  # pragma: no cover - fallback for environments without Groq
+    Groq = None
 
 
 def clean_response(text: str) -> str:
@@ -21,7 +25,9 @@ def clean_response(text: str) -> str:
 # ── Chargement configuration ──────────────────────────────
 load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+api_key = os.getenv("GROQ_API_KEY")
+client = Groq(api_key=api_key) if Groq and api_key else None
+MODEL_NAME = "llama-3.1-8b-instant"
 
 # ── Chargement modèle ML ──────────────────────────────────
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
@@ -40,23 +46,22 @@ DEBUG = True
 
 # ── Prompt système ────────────────────────────────────────
 SYSTEM_PROMPT = """
-Je suis votre assistant IA de carrière. Je peux répondre à vos questions sur l'intelligence artificielle, les métiers de la data, les compétences, les technologies et les conseils de carrière. Pour les statistiques et indicateurs de votre marché de l'emploi, consultez les tableaux de bord Power BI de la plateforme.
+Tu es AI Career Assistant, un assistant expert en carrières Data & Intelligence Artificielle.
 
-Tu réponds de manière claire, pédagogique et structurée.
+Tu aides les étudiants et professionnels à :
+- Comprendre les métiers Data/IA (Data Scientist, ML Engineer, Data Engineer...)
+- Comparer les technologies et frameworks
+- Préparer des entretiens techniques
+- Choisir des compétences à apprendre
+- Comprendre les tendances du marché IA
 
-Tu peux :
+Pour les statistiques précises (salaires, offres par pays, top compétences),
+oriente l'utilisateur vers les tableaux de bord de la plateforme.
 
-- expliquer des concepts d'IA
-- donner des conseils de carrière
-- expliquer les métiers
-- comparer les technologies
-- aider à préparer un entretien
-- conseiller des compétences à apprendre
-- expliquer les tendances du marché
+Pour les prédictions de salaire personnalisées, tu utilises le modèle ML intégré.
+N'invente jamais de chiffres — utilise uniquement les résultats du modèle ML.
 
-Lorsque la question concerne une estimation de salaire selon un profil, tu utilises les résultats du modèle Machine Learning fournis par l'application.
-
-N'invente jamais une prédiction.
+Réponds toujours en français, de manière claire et structurée.
 """
 
 
@@ -149,17 +154,24 @@ Question :
 Réponse :
 """
 
-    response = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        temperature=0,
-        max_tokens=5
-    )
+    if client is None:
+        return "GENERAL"
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0,
+            max_tokens=5
+        )
+    except Exception as exc:
+        print(f"Erreur detect_intent : {exc}")
+        return "GENERAL"
 
     return response.choices[0].message.content.strip().upper()
 
@@ -176,6 +188,12 @@ def chat(question: str, history: list) -> tuple[str, list]:
     Returns:
         (réponse, historique mis à jour)
     """
+    if client is None:
+        answer = "L'assistant IA n'est pas disponible pour le moment. Vérifiez votre clé GROQ_API_KEY pour activer le chatbot."
+        history.append({"role": "user", "content": question})
+        history.append({"role": "assistant", "content": answer})
+        return answer, history
+
     intent = detect_intent(question)
 
     if DEBUG:
@@ -196,25 +214,32 @@ def chat(question: str, history: list) -> tuple[str, list]:
     answer = ""
 
     if intent == "ML":
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=messages,
-            temperature=0.3,
-            max_tokens=1200
-        )
-
-        llm_response = clean_response(
-            response.choices[0].message.content
-        )
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=1200
+            )
+            llm_response = clean_response(
+                response.choices[0].message.content
+            )
+        except Exception as exc:
+            print(f"Erreur génération ML: {exc}")
+            answer = "Le service de génération est momentanément indisponible. Veuillez réessayer plus tard."
+            history.append({"role": "user", "content": question})
+            history.append({"role": "assistant", "content": answer})
+            return answer, history
 
         params = extract_ml_params(llm_response)
 
         if params:
             prediction = predict_salary(params)
 
-            final = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
-                messages=[
+            try:
+                final = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=[
                     *messages,
                     {
                         "role": "assistant",
@@ -233,11 +258,14 @@ Donne également quelques conseils de carrière.
 """
                     }
                 ]
-            )
+                )
 
-            answer = clean_response(
-                final.choices[0].message.content
-            )
+                answer = clean_response(
+                    final.choices[0].message.content
+                )
+            except Exception as exc:
+                print(f"Erreur génération finale ML: {exc}")
+                answer = "La prédiction n'a pas pu être complétée. Veuillez réessayer plus tard."
 
         else:
             answer = "Je n'ai pas réussi à effectuer la prédiction."
@@ -245,16 +273,20 @@ Donne également quelques conseils de carrière.
         answer += "\n\n🤖 Source : Modèle Machine Learning"
 
     else:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=messages,
-            temperature=0.5,
-            max_tokens=1200
-        )
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=messages,
+                temperature=0.5,
+                max_tokens=1200
+            )
 
-        answer = clean_response(
-            response.choices[0].message.content
-        )
+            answer = clean_response(
+                response.choices[0].message.content
+            )
+        except Exception as exc:
+            print(f"Erreur génération générale: {exc}")
+            answer = "Le chatbot n'est pas disponible actuellement. Veuillez réessayer plus tard."
 
         answer += "\n\n💡 Source : Assistant IA"
 

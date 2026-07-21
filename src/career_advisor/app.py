@@ -13,6 +13,7 @@ from io import BytesIO
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from db.connection import get_connection
+from career_advisor.chatbot import chat
 
 # ── Configuration ─────────────────────────────────────────────
 st.set_page_config(
@@ -91,6 +92,29 @@ st.markdown("""
         border-radius: 8px;
         padding: 12px 16px;
         margin: 8px 0;
+    }
+    .chat-shell {
+        background: linear-gradient(135deg, #f7fbff 0%, #eef6ff 100%);
+        border: 1px solid #d7e9ff;
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 8px 24px rgba(46, 134, 193, 0.08);
+    }
+    .chat-hero {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2e86c1 100%);
+        color: white;
+        border-radius: 16px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+    }
+    .chat-pill {
+        display: inline-block;
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 999px;
+        padding: 5px 12px;
+        margin: 4px 6px 0 0;
+        font-size: 0.82rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -201,7 +225,8 @@ with st.sidebar:
     page = st.radio("Navigation", [
     "🏠 Accueil", "📝 Mon Profil",
     "📊 Résultats", "🗺️ Plan de carrière",
-    "📊 Tableau de bord — Marché Data & IA"
+    "📊 Tableau de bord — Marché Data & IA",
+    "🤖 Assistant IA"
      ])
     st.markdown("---")
     st.markdown("**Base de données**")
@@ -678,7 +703,60 @@ elif page == "🗺️ Plan de carrière":
         st.plotly_chart(fig3, use_container_width=True)
 
 # ════════════════════════════════════════════════════════════
-# PAGE 5 — TABLEAU DE BORD MARCHÉ DATA & IA
+# PAGE 5 — ASSISTANT IA
+# ════════════════════════════════════════════════════════════
+elif page == "🤖 Assistant IA":
+    st.markdown("""
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+        <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg, #1e3a5f, #2e86c1); color:white; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:700;">AI</div>
+        <div>
+            <div style="font-size:1.35rem; font-weight:700; color:#1e3a5f;">Assistant IA</div>
+            <div style="font-size:0.95rem; color:#5f6b7a;">Posez des questions sur les métiers, les compétences, les salaires, les entretiens ou votre plan de carrière.</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("---")
+
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = []
+
+    st.markdown("""
+    <div class="chat-hero">
+        <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;">Assistant expert Data & IA</div>
+        <div>Obtenez des réponses claires et personnalisées pour avancer dans votre carrière.</div>
+        <div>
+            <span class="chat-pill">Métiers Data/IA</span>
+            <span class="chat-pill">Compétences à apprendre</span>
+            <span class="chat-pill">Salaires & tendances</span>
+            <span class="chat-pill">Préparation entretien</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="chat-shell">', unsafe_allow_html=True)
+    for msg in st.session_state["chat_history"]:
+        if msg["role"] == "user":
+            with st.chat_message("user"):
+                st.markdown(msg["content"])
+        else:
+            with st.chat_message("assistant"):
+                st.markdown(msg["content"])
+
+    if not st.session_state["chat_history"]:
+        with st.chat_message("assistant"):
+            st.markdown("Bonjour ! Je peux vous aider à explorer les métiers Data & IA, comparer des compétences, estimer des salaires ou préparer un entretien. Posez-moi votre première question.")
+
+    prompt = st.chat_input("Écrivez votre question ici...")
+    if prompt:
+        with st.spinner("L'assistant rédige une réponse..."):
+            response, updated_history = chat(prompt, st.session_state["chat_history"])
+        st.session_state["chat_history"] = updated_history
+        st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# PAGE 6 — TABLEAU DE BORD MARCHÉ DATA & IA
 # ════════════════════════════════════════════════════════════
 elif page == "📊 Tableau de bord — Marché Data & IA":
     st.markdown("# 📊 Tableau de bord — Marché Data & IA")
