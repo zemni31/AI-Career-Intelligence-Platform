@@ -8,7 +8,7 @@ Le projet aide les étudiants et les professionnels à explorer le marché de l'
 
 ## 📸 Aperçu de la plateforme
 
-![Accueil](images/home.png)
+![Accueil](images/accueil.png)
 
 ---
 
