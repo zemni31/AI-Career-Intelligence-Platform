@@ -181,4 +181,4 @@ INSAT – Université de Carthage
 
 # 📄 Licence
 
-Projet académique développé dans le cadre d'un stage de fin d'année.
+Projet académique développé dans le cadre d'un stage d'été.
