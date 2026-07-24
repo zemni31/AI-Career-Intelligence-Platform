@@ -362,7 +362,7 @@ elif page == "📊 Résultats":
     if target_country != "Tous les pays":
         filtered_df = filtered_df[filtered_df["country"] == target_country]
 
-    # Calcul des scores — Dice coefficient
+    # Calcul des scores — couverture des compétences requises
     job_scores    = {}
     job_skills_map = {}
     job_salaries  = {}
@@ -371,8 +371,7 @@ elif page == "📊 Résultats":
     for job_title, group in filtered_df.groupby("job_title"):
         required = set(group["skill_name"].dropna().tolist())
         match    = user_set & required
-        score    = round(2 * len(match) / (len(user_set) + len(required)) * 100, 1) \
-                   if (len(user_set) + len(required)) > 0 else 0
+        score    = round(len(match) / len(required) * 100, 1) if required else 0
         job_scores[job_title]     = score
         job_skills_map[job_title] = required
         job_salaries[job_title]   = group["salary_avg"].dropna().mean()

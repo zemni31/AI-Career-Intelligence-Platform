@@ -111,3 +111,27 @@ Construire la première version interactive de la plateforme Power BI en utilisa
 - [ ] Prédiction de salaire (ML)
 - [ ] README.md GitHub
 - [ ] Présentation finale
+
+
+ Finalisation du projet (24/07/2026)
+
+- Nettoyage de l'architecture du projet
+- Suppression des fichiers inutiles
+- Création du fichier requirements.txt
+- Rédaction du README GitHub
+- Mise à jour de la documentation
+- Vérification complète des fonctionnalités
+- Préparation de la version finale du projet
+
+---
+
+## 🚧 Prochaine étape
+
+### Rédaction du rapport de stage
+- Présentation de l'entreprise
+- Analyse des besoins
+- Conception de la solution
+- Architecture technique
+- Développement de la plateforme
+- Résultats obtenus
+- Conclusion et perspectives
